@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Django: Run Banking Server",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/django_banking/manage.py",
+      "args": ["runserver", "0.0.0.0:8000"],
+      "django": true,
+      "autoStartBrowser": true,
+      "env": {
+        "DJANGO_SETTINGS_MODULE": "banking_system.settings"
+      }
+    },
+    {
+      "name": "Django: Seed Sample Data",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/django_banking/manage.py",
+      "args": ["seed_banking_data"],
+      "django": true
+    },
+    {
+      "name": "Django: Run Tests",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/django_banking/manage.py",
+      "args": ["test", "tests"],
+      "django": true
+    }
+  ]
+}

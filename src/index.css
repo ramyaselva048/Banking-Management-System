@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Official Browser Print Stylesheet */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide app chrome, headers, sidebars, buttons, and navigation during print */
+  header,
+  aside,
+  nav,
+  footer,
+  main,
+  button,
+  input,
+  select,
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Reset fixed position of modal during browser print */
+  .fixed {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  #printable-report {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 16px 20px !important;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    background: #ffffff !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure colors print crisply */
+  .text-emerald-600,
+  .text-emerald-700 {
+    color: #059669 !important;
+  }
+
+  .text-blue-600,
+  .text-blue-700 {
+    color: #1d4ed8 !important;
+  }
+
+  .text-rose-600,
+  .text-red-600 {
+    color: #dc2626 !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Apex Bank - Banking Management System",
+  "description": "Production-ready Banking Management System featuring role-based access (Admin, Staff, Customer), accounts, deposits, transfers, loans, FD/RD, branch management, analytics, audit logs, and PDF/Excel reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

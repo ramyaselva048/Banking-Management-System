@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Django: Run Migrations",
+      "type": "shell",
+      "command": "python manage.py makemigrations && python manage.py migrate",
+      "options": {
+        "cwd": "${workspaceFolder}/django_banking"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Django: Seed Demo Data",
+      "type": "shell",
+      "command": "python manage.py seed_banking_data",
+      "options": {
+        "cwd": "${workspaceFolder}/django_banking"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Django: Run Pytest/Tests",
+      "type": "shell",
+      "command": "python manage.py test tests",
+      "options": {
+        "cwd": "${workspaceFolder}/django_banking"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

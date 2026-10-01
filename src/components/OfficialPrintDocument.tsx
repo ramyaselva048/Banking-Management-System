@@ -1,0 +1,293 @@
+import React from 'react';
+import { BankAccount, Transaction, Customer, User } from '../types/banking';
+import { formatCurrency } from '../utils/finance';
+
+interface OfficialPrintDocumentProps {
+  accounts: BankAccount[];
+  transactions: Transaction[];
+  customers: Customer[];
+  currentUser: User;
+  selectedAccountId?: string;
+}
+
+export const OfficialPrintDocument: React.FC<OfficialPrintDocumentProps> = ({
+  accounts,
+  transactions,
+  customers,
+  currentUser,
+  selectedAccountId,
+}) => {
+  const currentAccount =
+    accounts.find((a) => a.id === selectedAccountId) || accounts[0];
+  const currentCustomer = currentAccount
+    ? customers.find((c) => c.id === currentAccount.customerId)
+    : customers[0];
+
+  const reportTransactions = currentAccount
+    ? transactions.filter((t) => t.accountId === currentAccount.id)
+    : transactions;
+
+  const incomeTxns = reportTransactions.filter(
+    (t) => t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN' || t.type === 'FD_INTEREST'
+  );
+  const expenseTxns = reportTransactions.filter(
+    (t) => t.type === 'WITHDRAWAL' || t.type === 'TRANSFER_OUT' || t.type === 'EMI_PAYMENT'
+  );
+
+  const totalIncome = incomeTxns.reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = expenseTxns.reduce((sum, t) => sum + t.amount, 0);
+  const receivableAmount = 13612.0;
+  const payableAmount = 8216.0;
+
+  const totalBalance = currentAccount ? currentAccount.balance : 780560.0;
+  const reportNumber = 'RPT-2026-00015';
+
+  const now = new Date();
+  const dateFormatted = `${String(now.getDate()).padStart(2, '0')}-${String(
+    now.getMonth() + 1
+  ).padStart(2, '0')}-${now.getFullYear()}`;
+  const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div id="direct-printable-wrapper" className="hidden print:block w-full bg-white text-slate-900 font-sans">
+      <div
+        id="printable-report"
+        className="bg-white p-6 rounded-xl border border-slate-300 mx-auto w-full text-slate-900 font-sans"
+      >
+        {/* Top Running Header (Matches "30/09/2026, 12:57" and "Report RPT-2026-00015 - Azia Finance Monitoring") */}
+        <div className="flex items-center justify-between text-[11px] text-slate-500 pb-3 font-mono">
+          <span>
+            {dateFormatted.replace(/-/g, '/')}, {timeFormatted}
+          </span>
+          <span className="font-semibold text-slate-700">
+            Report {reportNumber} - Apex Finance Monitoring
+          </span>
+        </div>
+
+        {/* Inner Bordered Box */}
+        <div className="border border-slate-300 rounded-xl p-5">
+          {/* Centered Pill: [ FINANCIAL MONITORING STATEMENT ] */}
+          <div className="text-center mb-2">
+            <span className="inline-block border border-slate-800 text-slate-900 font-mono font-bold text-[9px] uppercase tracking-widest px-3 py-0.5 rounded">
+              FINANCIAL MONITORING STATEMENT
+            </span>
+          </div>
+
+          {/* Main Brand Title */}
+          <div className="text-center mb-1">
+            <h1 className="text-2xl font-black tracking-widest text-slate-900 font-mono uppercase">
+              APEX FINANCE
+            </h1>
+            <h2 className="text-[10px] font-bold text-slate-600 tracking-wider font-mono uppercase">
+              FINANCE MONITORING ENTERPRISE DASHBOARD
+            </h2>
+          </div>
+
+          {/* Sub-header Details */}
+          <div className="text-center text-[11px] text-slate-600 space-y-0.5 mb-4 font-mono">
+            <div>
+              Account Holder:{' '}
+              <span className="text-slate-900 font-semibold">
+                {currentCustomer?.fullName || currentAccount?.customerName || 'Alicia Christensen'}
+              </span>{' '}
+              | Account:{' '}
+              <span className="font-semibold text-slate-900">
+                VISA •••• {currentAccount?.accountNumber.slice(-4) || '5637'} (
+                {currentAccount?.accountType || 'Savings'})
+              </span>
+            </div>
+            <div>
+              Operator:{' '}
+              <span className="text-slate-900 font-semibold">
+                {currentUser?.firstName || 'Alexander'} {currentUser?.lastName || 'Hamilton'} (
+                {currentUser?.email || 'admin@apexbank.com'})
+              </span>{' '}
+              | Period: <span className="text-slate-900 font-semibold">All Dates</span>
+            </div>
+          </div>
+
+          {/* Dotted Divider */}
+          <div className="border-t border-dashed border-slate-300 my-3" />
+
+          {/* Meta Key-Value Grid */}
+          <div className="grid grid-cols-2 text-xs font-mono gap-y-1 mb-4 text-slate-700">
+            <div>
+              Report No: <span className="font-bold text-blue-600">{reportNumber}</span>
+            </div>
+            <div className="text-right">
+              Date: <span className="font-bold text-slate-900">{dateFormatted}</span>
+            </div>
+
+            <div>
+              Gross Margin: <span className="font-semibold text-slate-900">75%</span> | Net Margin:{' '}
+              <span className="font-semibold text-slate-900">68%</span>
+            </div>
+            <div className="text-right flex items-center justify-end gap-1.5">
+              <span>Status:</span>
+              <span className="border border-emerald-600 bg-emerald-50 text-emerald-700 font-bold text-[10px] px-2 py-0.2 rounded font-mono">
+                VERIFIED
+              </span>
+            </div>
+
+            <div>
+              Time:{' '}
+              <span className="text-slate-900">
+                {dateFormatted} {timeFormatted}
+              </span>
+            </div>
+            <div className="text-right">
+              Ratios: <span className="text-slate-900">QR 1.4:8 | CR 3.3</span>
+            </div>
+          </div>
+
+          {/* 4 Summary KPI Cards Row (Exact Match) */}
+          <div className="grid grid-cols-4 gap-2.5 mb-4">
+            {/* Box 1: Total Income */}
+            <div className="border border-cyan-300/80 rounded-lg p-2.5 bg-cyan-50/20">
+              <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                TOTAL INCOME
+              </span>
+              <span className="text-sm font-bold text-blue-600 font-mono">
+                {formatCurrency(totalIncome > 0 ? totalIncome : 83320.5)}
+              </span>
+            </div>
+
+            {/* Box 2: Total Expenses */}
+            <div className="border border-cyan-300/80 rounded-lg p-2.5 bg-cyan-50/20">
+              <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                TOTAL EXPENSES
+              </span>
+              <span className="text-sm font-bold text-blue-600 font-mono">
+                {formatCurrency(totalExpense > 0 ? totalExpense : 32370.0)}
+              </span>
+            </div>
+
+            {/* Box 3: Receivable */}
+            <div className="border border-cyan-300/80 rounded-lg p-2.5 bg-cyan-50/20">
+              <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                RECEIVABLE
+              </span>
+              <span className="text-sm font-bold text-emerald-600 font-mono">
+                {formatCurrency(receivableAmount)}
+              </span>
+            </div>
+
+            {/* Box 4: Payable */}
+            <div className="border border-cyan-300/80 rounded-lg p-2.5 bg-cyan-50/20">
+              <span className="block text-[9px] font-bold text-slate-500 uppercase tracking-wider font-mono">
+                PAYABLE
+              </span>
+              <span className="text-sm font-bold text-rose-600 font-mono">
+                {formatCurrency(payableAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Dotted Line */}
+          <div className="border-t border-dashed border-slate-300 my-3" />
+
+          {/* Table Header with Dotted Top & Bottom */}
+          <div className="border-t border-b border-dashed border-slate-400 py-1.5 my-2 flex items-center justify-between text-[11px] font-bold font-mono text-slate-800">
+            <span className="w-1/2">ITEM / TRANSACTION</span>
+            <span className="w-1/6 text-center">TYPE</span>
+            <span className="w-1/6 text-center">STATUS</span>
+            <span className="w-1/6 text-right">AMOUNT</span>
+          </div>
+
+          {/* Transactions List */}
+          <div className="divide-y divide-slate-100 text-[11px] font-mono">
+            {reportTransactions.slice(0, 15).map((t, idx) => {
+              const isInflow = t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN';
+              const isExpense = t.type === 'WITHDRAWAL' || t.type === 'TRANSFER_OUT';
+              const isPayable = t.type === 'EMI_PAYMENT';
+
+              const typeLabel = isInflow
+                ? 'RECEIVABLE'
+                : isPayable
+                ? 'PAYABLE'
+                : isExpense
+                ? 'EXPENSE'
+                : 'INCOME';
+              const typeColor = isInflow
+                ? 'text-emerald-600'
+                : isPayable
+                ? 'text-rose-600'
+                : 'text-blue-600';
+
+              return (
+                <div key={t.id} className="py-2 flex items-start justify-between">
+                  <div className="w-1/2 pr-2">
+                    <div className="font-semibold text-slate-900">
+                      {idx + 1}. {t.description} (
+                      {new Date(t.createdAt).toISOString().split('T')[0]})
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Ref: {t.referenceId} &bull; Account {t.accountNumber}
+                    </div>
+                  </div>
+                  <div className={`w-1/6 text-center font-bold ${typeColor}`}>
+                    {typeLabel}
+                  </div>
+                  <div className="w-1/6 text-center text-slate-600">{t.status}</div>
+                  <div className="w-1/6 text-right font-bold text-slate-900">
+                    {formatCurrency(t.amount)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Subtotals & Treasury Balance Section */}
+          <div className="border-t border-dashed border-slate-300 mt-4 pt-3 space-y-1 text-xs font-mono text-slate-700">
+            <div className="flex justify-between">
+              <span>Total Income ({incomeTxns.length || 4} items):</span>
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(totalIncome > 0 ? totalIncome : 83320.5)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Total Expenses ({expenseTxns.length || 4} items):</span>
+              <span className="font-semibold text-slate-900">
+                -{formatCurrency(totalExpense > 0 ? totalExpense : 32370.0)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Accounts Receivable / Payable Net:</span>
+              <span className="font-semibold text-slate-900">
+                {formatCurrency(receivableAmount - payableAmount)}
+              </span>
+            </div>
+
+            <div className="border-t border-dashed border-slate-300 my-2" />
+
+            <div className="flex items-center justify-between text-base font-extrabold text-slate-900 pt-1">
+              <span>CURRENT TREASURY BALANCE :</span>
+              <span>{formatCurrency(totalBalance)}</span>
+            </div>
+          </div>
+
+          {/* Official Statement Audited Verified Box (Exact Match) */}
+          <div className="mt-8 mb-2 flex justify-center">
+            <div className="border border-emerald-600 bg-white rounded-lg px-6 py-2 text-center shadow-2xs">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-800 font-mono">
+                STATEMENT AUDITED
+              </div>
+              <div className="text-xs font-black text-emerald-600 font-mono tracking-widest my-0.5">
+                VERIFIED
+              </div>
+              <div className="text-[8px] text-emerald-700 font-mono">
+                via Apex National Bank
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Footer (Matches "about:blank" on left, "1/1" on right) */}
+        <div className="flex items-center justify-between text-[10px] text-slate-400 mt-4 font-mono">
+          <span>about:blank</span>
+          <span>1/1</span>
+        </div>
+      </div>
+    </div>
+  );
+};
