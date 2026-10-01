@@ -119,10 +119,14 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
 
   const totalIncome = incomeTxns.reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = expenseTxns.reduce((sum, t) => sum + t.amount, 0);
-  const receivableAmount = 13612.0;
-  const payableAmount = 8216.0;
+  const receivableAmount = loans
+    .filter((l) => l.status === 'DISBURSED')
+    .reduce((sum, l) => sum + Math.max(0, l.totalPayable - l.amountPaid), 0);
+  const payableAmount = 0;
 
-  const totalBalance = currentAccount ? currentAccount.balance : 780560.0;
+  const totalBalance = currentAccount
+    ? currentAccount.balance
+    : accounts.reduce((sum, a) => sum + a.balance, 0);
   const reportNumber = 'RPT-2026-00015';
 
   const now = new Date();
@@ -282,7 +286,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               {/* Sub-header Details */}
               <div className="text-center text-[11px] text-slate-600 space-y-0.5 mb-4 font-mono">
                 <div>
-                  Account Holder: <span className="text-slate-900 font-semibold">{currentCustomer?.fullName || currentAccount?.customerName || 'Alicia Christensen'}</span> | Account: <span className="font-semibold text-slate-900">VISA •••• {currentAccount?.accountNumber.slice(-4) || '5637'} ({currentAccount?.accountType || 'Savings'})</span>
+                  Account Holder: <span className="text-slate-900 font-semibold">{currentCustomer?.fullName || currentAccount?.customerName || 'N/A'}</span> | Account: <span className="font-semibold text-slate-900">{currentAccount ? `•••• ${currentAccount.accountNumber.slice(-4)} (${currentAccount.accountType})` : 'All Accounts'}</span>
                 </div>
                 <div>
                   Operator: <span className="text-slate-900 font-semibold">{currentUser.firstName} {currentUser.lastName} ({currentUser.email})</span> | Period: <span className="text-slate-900 font-semibold">{startDate && endDate ? `${startDate} to ${endDate}` : 'All Dates'}</span>
@@ -327,7 +331,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                     TOTAL INCOME
                   </span>
                   <span className="text-sm font-bold text-blue-600 font-mono">
-                    {formatCurrency(totalIncome > 0 ? totalIncome : 83320.5)}
+                    {formatCurrency(totalIncome)}
                   </span>
                 </div>
 
@@ -337,7 +341,7 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                     TOTAL EXPENSES
                   </span>
                   <span className="text-sm font-bold text-blue-600 font-mono">
-                    {formatCurrency(totalExpense > 0 ? totalExpense : 32370.0)}
+                    {formatCurrency(totalExpense)}
                   </span>
                 </div>
 
@@ -414,15 +418,15 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               {/* Subtotals & Treasury Balance Section */}
               <div className="border-t border-dashed border-slate-300 mt-4 pt-3 space-y-1 text-xs font-mono text-slate-700">
                 <div className="flex justify-between">
-                  <span>Total Income ({incomeTxns.length || 4} items):</span>
+                  <span>Total Income ({incomeTxns.length} items):</span>
                   <span className="font-semibold text-slate-900">
-                    {formatCurrency(totalIncome > 0 ? totalIncome : 83320.5)}
+                    {formatCurrency(totalIncome)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Total Expenses ({expenseTxns.length || 4} items):</span>
+                  <span>Total Expenses ({expenseTxns.length} items):</span>
                   <span className="font-semibold text-slate-900">
-                    -{formatCurrency(totalExpense > 0 ? totalExpense : 32370.0)}
+                    -{formatCurrency(totalExpense)}
                   </span>
                 </div>
                 <div className="flex justify-between">

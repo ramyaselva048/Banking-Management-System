@@ -91,15 +91,38 @@ export const Dashboard: React.FC<DashboardProps> = ({
     .reduce((sum, l) => sum + l.amount, 0);
   const pendingLoans = loans.filter((l) => l.status === 'PENDING').length;
 
-  // Chart data: 7-day cash flow
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
+  // Chart data: 7-day cash flow computed from real transactions
+  const last7DayDates = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d;
   });
 
-  const inflowData = [4500, 7200, 3100, 8900, 6400, 9500, 11200];
-  const outflowData = [2100, 3400, 1900, 4200, 3100, 5800, 4700];
+  const last7Days = last7DayDates.map((d) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  );
+
+  const inflowData = last7DayDates.map((d) => {
+    const dateStr = d.toISOString().split('T')[0];
+    return transactions
+      .filter(
+        (t) =>
+          t.createdAt.startsWith(dateStr) &&
+          (t.type === 'DEPOSIT' || t.type === 'TRANSFER_IN' || t.type === 'LOAN_DISBURSEMENT' || t.type === 'FD_INTEREST')
+      )
+      .reduce((sum, t) => sum + t.amount, 0);
+  });
+
+  const outflowData = last7DayDates.map((d) => {
+    const dateStr = d.toISOString().split('T')[0];
+    return transactions
+      .filter(
+        (t) =>
+          t.createdAt.startsWith(dateStr) &&
+          (t.type === 'WITHDRAWAL' || t.type === 'TRANSFER_OUT' || t.type === 'EMI_PAYMENT')
+      )
+      .reduce((sum, t) => sum + t.amount, 0);
+  });
 
   const cashFlowData = {
     labels: last7Days,
@@ -132,7 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     labels: ['Savings Accounts', 'Current Accounts', 'Fixed Deposit'],
     datasets: [
       {
-        data: [savingsCount || 1, currentCount || 1, fdCount || 1],
+        data: [savingsCount, currentCount, fdCount],
         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B'],
         borderWidth: 2,
         borderColor: '#ffffff',
@@ -255,7 +278,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {formatCurrency(totalLoansDisbursed)}
           </div>
           <div className="mt-2 flex items-center gap-1 text-xs text-blue-600 font-medium">
-            <span>Low Default Rate (0.4%)</span>
+            <span>{loans.filter((l) => l.status === 'DISBURSED').length} active loans</span>
           </div>
         </div>
 
@@ -477,6 +500,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </tr>
                 );
               })}
+              {transactions.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">
+                    No ledger transactions recorded yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -119,6 +119,12 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
         ))}
       </div>
 
+      {branches.length === 0 && (
+        <div className="bg-white rounded-xl p-8 text-center text-slate-400 border border-slate-200">
+          No bank branches registered yet. Click "Add Bank Branch" to register your first branch.
+        </div>
+      )}
+
       {/* Add Branch Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
@@ -174,7 +180,7 @@ export const BranchManagement: React.FC<BranchManagementProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Branch Manager</label>
                   <input
                     type="text"
-                    placeholder="e.g. Robert Smith"
+                    placeholder="Enter manager name"
                     value={managerName}
                     onChange={(e) => setManagerName(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"

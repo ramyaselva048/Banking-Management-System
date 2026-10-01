@@ -28,11 +28,11 @@ export function generateStatementHtml(params: {
     (t) => t.type === 'WITHDRAWAL' || t.type === 'TRANSFER_OUT' || t.type === 'EMI_PAYMENT'
   );
 
-  const totalIncome = incomeTxns.reduce((sum, t) => sum + t.amount, 0) || 83320.5;
-  const totalExpense = expenseTxns.reduce((sum, t) => sum + t.amount, 0) || 32370.0;
-  const receivableAmount = 13612.0;
-  const payableAmount = 8216.0;
-  const totalBalance = account ? account.balance : 780560.0;
+  const totalIncome = incomeTxns.reduce((sum, t) => sum + t.amount, 0);
+  const totalExpense = expenseTxns.reduce((sum, t) => sum + t.amount, 0);
+  const receivableAmount = 0;
+  const payableAmount = 0;
+  const totalBalance = account ? account.balance : 0;
 
   const rowsHtml = reportTxns
     .slice(0, 16)
@@ -196,8 +196,8 @@ export function generateStatementHtml(params: {
 
     <!-- Metadata Details -->
     <div style="text-align: center; font-size: 10px; color: #475569; margin-bottom: 8px;" class="mono">
-      <div>Account Holder: <b style="color: #0f172a;">${customer?.fullName || account?.customerName || 'Alicia Christensen'}</b> | Account: <b style="color: #0f172a;">VISA •••• ${account?.accountNumber ? account.accountNumber.slice(-4) : '5637'} (${account?.accountType || 'Savings'})</b></div>
-      <div>Operator: <b style="color: #0f172a;">${currentUser?.firstName || 'Alexander'} ${currentUser?.lastName || 'Hamilton'} (${currentUser?.email || 'admin@apexbank.com'})</b> | Period: <b style="color: #0f172a;">All Dates</b></div>
+      <div>Account Holder: <b style="color: #0f172a;">${customer?.fullName || account?.customerName || 'N/A'}</b> | Account: <b style="color: #0f172a;">${account?.accountNumber ? `•••• ${account.accountNumber.slice(-4)} (${account.accountType})` : 'All Accounts'}</b></div>
+      <div>Operator: <b style="color: #0f172a;">${currentUser?.firstName || 'Admin'} ${currentUser?.lastName || ''} (${currentUser?.email || 'admin@apexbank.com'})</b> | Period: <b style="color: #0f172a;">All Dates</b></div>
     </div>
 
     <div class="dashed-divider"></div>
@@ -258,11 +258,11 @@ export function generateStatementHtml(params: {
     <!-- Subtotals Section -->
     <div style="font-size: 10px; color: #334155; line-height: 1.6;" class="mono">
       <div style="display: flex; justify-content: space-between;">
-        <span>Total Income (${incomeTxns.length || 4} items):</span>
+        <span>Total Income (${incomeTxns.length} items):</span>
         <span style="font-weight: bold; color: #0f172a;">${formatCurrency(totalIncome)}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">
-        <span>Total Expenses (${expenseTxns.length || 4} items):</span>
+        <span>Total Expenses (${expenseTxns.length} items):</span>
         <span style="font-weight: bold; color: #0f172a;">-${formatCurrency(totalExpense)}</span>
       </div>
       <div style="display: flex; justify-content: space-between;">

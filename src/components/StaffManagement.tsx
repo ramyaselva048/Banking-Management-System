@@ -68,8 +68,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
   const [branchId, setBranchId] = useState(branches[0]?.id || '');
   const [department, setDepartment] = useState('Credit & Loans');
   const [designation, setDesignation] = useState('Credit & Loan Officer');
-  const [approvalLimit, setApprovalLimit] = useState(100000);
-  const [password, setPassword] = useState('Staff@2026');
+  const [approvalLimit, setApprovalLimit] = useState(0);
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Edit password state
@@ -118,10 +118,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
   const handleAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email) return;
+    if (!fullName || !email || !password.trim()) return;
 
     const assignedBranch = branches.find((b) => b.id === branchId) || branches[0];
-    const initialPass = password.trim() || 'Staff@2026';
+    const initialPass = password.trim();
 
     onAddStaff(
       {
@@ -129,11 +129,11 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         fullName,
         email,
         phone,
-        branchId: assignedBranch.id,
-        branchName: assignedBranch.name,
+        branchId: assignedBranch?.id || '',
+        branchName: assignedBranch?.name || 'Unassigned',
         department,
         designation,
-        approvalLimit: Number(approvalLimit) || 50000,
+        approvalLimit: Number(approvalLimit) || 0,
         status: 'ACTIVE',
         password: initialPass,
       },
@@ -150,8 +150,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     setFullName('');
     setEmail('');
     setPhone('');
-    setPassword('Staff@2026');
-    setApprovalLimit(100000);
+    setPassword('');
+    setApprovalLimit(0);
   };
 
   const handleTransferSubmit = (e: React.FormEvent) => {
@@ -338,7 +338,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search officer by name, email, Employee ID (e.g. EMP-10492), or role..."
+            placeholder="Search officer by name, email, Employee ID, or role..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-xs"
@@ -529,7 +529,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Thomas Wayne"
+                    placeholder="Enter full legal name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
@@ -540,7 +540,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                   <input
                     type="email"
                     required
-                    placeholder="thomas.w@apexbank.com"
+                    placeholder="Enter official email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"

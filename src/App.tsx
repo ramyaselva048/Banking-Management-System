@@ -144,27 +144,25 @@ export default function App() {
     };
     BankingStorage.addUser(newUser);
 
-    const newCust = BankingStorage.addCustomer({
+    BankingStorage.addCustomer({
       userId: newUser.id,
       fullName: name,
       email: email.trim().toLowerCase(),
       phone,
-      dateOfBirth: '1995-01-01',
+      dateOfBirth: '',
       gender: 'Male',
       idType: 'National ID',
-      idNumber: `ID-${Math.floor(100000 + Math.random() * 900000)}`,
-      address: '742 Evergreen Terrace',
-      city: 'New York',
-      state: 'NY',
-      occupation: 'Retail Banking Customer',
-      annualIncome: 70000,
-      branchId: branches[0]?.id || 'br-001',
-      branchName: branchName || 'Apex Downtown Headquarters',
+      idNumber: '',
+      address: '',
+      city: '',
+      state: '',
+      occupation: '',
+      annualIncome: 0,
+      branchId: branches[0]?.id || '',
+      branchName: branchName || branches[0]?.name || '',
       kycStatus: 'VERIFIED',
     });
 
-    // Allocate an initial active account with $5,000 bonus balance
-    BankingStorage.addAccount(newCust.id, 'SAVINGS', 5000, 3.5);
     refreshState();
   };
 

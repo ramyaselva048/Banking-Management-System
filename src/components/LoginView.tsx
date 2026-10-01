@@ -31,8 +31,8 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onRegisterCustomer,
 }) => {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
-  const [usernameOrEmail, setUsernameOrEmail] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [usernameOrEmail, setUsernameOrEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -40,7 +40,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
-  const [regPassword, setRegPassword] = useState('customer123');
+  const [regPassword, setRegPassword] = useState('');
   const [regSuccess, setRegSuccess] = useState('');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -66,15 +66,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
       return;
     }
 
-    const expectedPassword =
-      targetUser.password ||
-      (targetUser.role === 'ADMIN'
-        ? 'admin123'
-        : targetUser.role === 'STAFF'
-        ? 'Staff@2026'
-        : 'customer123');
+    const expectedPassword = targetUser.password || '';
 
-    if (password !== expectedPassword) {
+    if (expectedPassword && password !== expectedPassword) {
       setErrorMessage(
         `Incorrect password for ${targetUser.email}. If you recently updated your password in Profile, please enter your new password.`
       );
@@ -86,34 +80,22 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regEmail) {
-      setErrorMessage('Please enter legal name and valid email address.');
+    if (!regName || !regEmail || !regPassword) {
+      setErrorMessage('Please enter full name, email address, and password.');
       return;
     }
 
     onRegisterCustomer(
       regName,
       regEmail.trim().toLowerCase(),
-      regPhone || '+1 (555) 019-8800',
-      'Apex Downtown Headquarters',
-      regPassword || 'customer123'
+      regPhone.trim(),
+      '',
+      regPassword
     );
     setRegSuccess(`Account for ${regName} created successfully! You can now log in with your email and password.`);
     setIsRegisterMode(false);
     setUsernameOrEmail(regEmail.trim().toLowerCase());
-    setPassword(regPassword || 'customer123');
-  };
-
-  const quickLogin = (role: 'ADMIN' | 'STAFF' | 'CUSTOMER', username: string) => {
-    const user = users.find((u) => u.username === username) || users.find((u) => u.role === role);
-    if (user) {
-      setUsernameOrEmail(user.email);
-      setPassword(
-        user.password ||
-          (user.role === 'ADMIN' ? 'admin123' : user.role === 'STAFF' ? 'Staff@2026' : 'customer123')
-      );
-      onLogin(user);
-    }
+    setPassword('');
   };
 
   return (
@@ -170,7 +152,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     required
                     value={usernameOrEmail}
                     onChange={(e) => setUsernameOrEmail(e.target.value)}
-                    placeholder="e.g. admin or john_doe"
+                    placeholder="Enter username or email"
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
@@ -179,9 +161,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-semibold text-slate-300">Password</label>
-                  <span className="text-[11px] text-blue-400 hover:text-blue-300 cursor-pointer">
-                    Demo: Any password &ge; 4 chars
-                  </span>
                 </div>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -236,7 +215,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. David Hasselhoff"
+                  placeholder="Enter full legal name"
                   value={regName}
                   onChange={(e) => setRegName(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-white text-xs"
@@ -248,7 +227,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <input
                   type="email"
                   required
-                  placeholder="david@example.com"
+                  placeholder="Enter email address"
                   value={regEmail}
                   onChange={(e) => setRegEmail(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-white text-xs"
@@ -259,7 +238,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <label className="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
                 <input
                   type="tel"
-                  placeholder="+1 (555) 019-2834"
+                  placeholder="Enter phone number"
                   value={regPhone}
                   onChange={(e) => setRegPhone(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900 text-white text-xs"
@@ -296,62 +275,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
             </form>
           )}
-
-          {/* Quick Demo Sign In Persona Shortcuts */}
-          <div className="mt-6 pt-5 border-t border-slate-700/80">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
-              1-Click Demo Login
-            </span>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => quickLogin('ADMIN', 'admin')}
-                className="p-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/50 border border-red-800/40 text-left transition group"
-              >
-                <div className="font-bold text-red-300 group-hover:text-red-200">Admin Portal</div>
-                <div className="text-[10px] text-slate-400">admin@apexbank.com</div>
-                <div className="text-[9px] text-red-400/80 font-mono mt-0.5">
-                  PW: {users.find((u) => u.role === 'ADMIN')?.password || 'admin123'}
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('STAFF', 'staff_officer')}
-                className="p-2.5 rounded-xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-800/40 text-left transition group"
-              >
-                <div className="font-bold text-blue-300 group-hover:text-blue-200">Staff Officer</div>
-                <div className="text-[10px] text-slate-400">staff@apexbank.com</div>
-                <div className="text-[9px] text-blue-400/80 font-mono mt-0.5">
-                  PW: {users.find((u) => u.role === 'STAFF')?.password || 'Staff@2026'}
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('CUSTOMER', 'john_doe')}
-                className="p-2.5 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 text-left transition group"
-              >
-                <div className="font-bold text-emerald-300 group-hover:text-emerald-200">Customer John</div>
-                <div className="text-[10px] text-slate-400">john@example.com</div>
-                <div className="text-[9px] text-emerald-400/80 font-mono mt-0.5">
-                  PW: {users.find((u) => u.username === 'john_doe')?.password || 'customer123'}
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin('CUSTOMER', 'emily_chen')}
-                className="p-2.5 rounded-xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/40 text-left transition group"
-              >
-                <div className="font-bold text-purple-300 group-hover:text-purple-200">Customer Emily</div>
-                <div className="text-[10px] text-slate-400">emily@example.com</div>
-                <div className="text-[9px] text-purple-400/80 font-mono mt-0.5">
-                  PW: {users.find((u) => u.username === 'emily_chen')?.password || 'customer123'}
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="text-center mt-4 text-[11px] text-slate-500">

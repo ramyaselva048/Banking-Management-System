@@ -29,8 +29,8 @@ export const Beneficiaries: React.FC<BeneficiariesProps> = ({
   const [showAddModal, setShowAddModal] = useState(false);
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
-  const [bankName, setBankName] = useState('Apex National Bank');
-  const [ifscCode, setIfscCode] = useState('APEX0001001');
+  const [bankName, setBankName] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
 
@@ -159,7 +159,7 @@ export const Beneficiaries: React.FC<BeneficiariesProps> = ({
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Emily Chen"
+                  placeholder="Enter payee name"
                   value={beneficiaryName}
                   onChange={(e) => setBeneficiaryName(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"

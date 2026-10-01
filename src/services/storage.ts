@@ -27,19 +27,40 @@ import {
 } from '../data/initialData';
 import { roundMoney, generateId, generateAccountNumber } from '../utils/finance';
 
+const LEGACY_DEMO_KEYS = [
+  'apex_bank_current_user',
+  'apex_bank_users',
+  'apex_bank_customers',
+  'apex_bank_staff',
+  'apex_bank_accounts',
+  'apex_bank_transactions',
+  'apex_bank_loans',
+  'apex_bank_fds',
+  'apex_bank_beneficiaries',
+  'apex_bank_branches',
+  'apex_bank_audit_logs',
+  'apex_bank_notifications',
+];
+
+try {
+  LEGACY_DEMO_KEYS.forEach((k) => localStorage.removeItem(k));
+} catch (e) {
+  // Ignore storage access errors
+}
+
 const STORAGE_KEYS = {
-  CURRENT_USER: 'apex_bank_current_user',
-  USERS: 'apex_bank_users',
-  CUSTOMERS: 'apex_bank_customers',
-  STAFF: 'apex_bank_staff',
-  ACCOUNTS: 'apex_bank_accounts',
-  TRANSACTIONS: 'apex_bank_transactions',
-  LOANS: 'apex_bank_loans',
-  FDS: 'apex_bank_fds',
-  BENEFICIARIES: 'apex_bank_beneficiaries',
-  BRANCHES: 'apex_bank_branches',
-  LOGS: 'apex_bank_audit_logs',
-  NOTIFICATIONS: 'apex_bank_notifications',
+  CURRENT_USER: 'apex_bank_v2_current_user',
+  USERS: 'apex_bank_v2_users',
+  CUSTOMERS: 'apex_bank_v2_customers',
+  STAFF: 'apex_bank_v2_staff',
+  ACCOUNTS: 'apex_bank_v2_accounts',
+  TRANSACTIONS: 'apex_bank_v2_transactions',
+  LOANS: 'apex_bank_v2_loans',
+  FDS: 'apex_bank_v2_fds',
+  BENEFICIARIES: 'apex_bank_v2_beneficiaries',
+  BRANCHES: 'apex_bank_v2_branches',
+  LOGS: 'apex_bank_v2_audit_logs',
+  NOTIFICATIONS: 'apex_bank_v2_notifications',
 };
 
 function getStored<T>(key: string, defaultValue: T): T {

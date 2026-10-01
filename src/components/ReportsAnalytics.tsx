@@ -73,7 +73,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
     datasets: [
       {
         label: 'Branch Liquid Assets ($)',
-        data: branchData.map((v) => (v > 0 ? v : 12000)),
+        data: branchData,
         backgroundColor: '#2563EB',
         borderRadius: 8,
       },

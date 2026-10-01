@@ -57,15 +57,15 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
     fullName: '',
     email: '',
     phone: '',
-    dateOfBirth: '1990-01-01',
+    dateOfBirth: '',
     gender: 'Male' as const,
     idType: 'Passport',
     idNumber: '',
     address: '',
     city: '',
     state: '',
-    occupation: 'Professional',
-    annualIncome: 75000,
+    occupation: '',
+    annualIncome: 0,
     branchId: branches[0]?.id || '',
     branchName: branches[0]?.name || '',
     kycStatus: 'VERIFIED' as KYCStatus,
@@ -96,15 +96,15 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
       fullName: '',
       email: '',
       phone: '',
-      dateOfBirth: '1990-01-01',
+      dateOfBirth: '',
       gender: 'Male',
       idType: 'Passport',
       idNumber: '',
       address: '',
       city: '',
       state: '',
-      occupation: 'Professional',
-      annualIncome: 75000,
+      occupation: '',
+      annualIncome: 0,
       branchId: branches[0]?.id || '',
       branchName: branches[0]?.name || '',
       kycStatus: 'VERIFIED',
@@ -164,7 +164,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by name, email, phone, or customer ID (e.g. CUST-8801)..."
+            placeholder="Search by name, email, phone, or customer ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -322,7 +322,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                     required
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    placeholder="e.g. David Hasselhoff"
+                    placeholder="Enter full legal name"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
@@ -334,7 +334,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="david@example.com"
+                    placeholder="Enter email address"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
@@ -346,7 +346,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="+1 (555) 019-2834"
+                    placeholder="Enter phone number"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
