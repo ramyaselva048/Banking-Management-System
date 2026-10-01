@@ -14,6 +14,7 @@ import {
 import { Transaction, BankAccount, Customer, TransactionType } from '../types/banking';
 import { exportTransactionsToExcel, generateAccountStatementPDF } from '../utils/export';
 import { formatCurrency } from '../utils/finance';
+import { TypeableSelect } from './TypeableSelect';
 
 interface TransactionsStatementProps {
   transactions: Transaction[];
@@ -123,37 +124,40 @@ export const TransactionsStatement: React.FC<TransactionsStatementProps> = ({
           {/* Account Filter */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1">Filter by Account</label>
-            <select
+            <TypeableSelect
+              allowCustom={false}
               value={selectedAccId}
-              onChange={(e) => setSelectedAccId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white text-slate-800"
-            >
-              <option value="ALL">All Bank Accounts</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.accountNumber} ({a.customerName}) — {a.accountType}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setSelectedAccId(val)}
+              placeholder="Type or select account..."
+              options={[
+                { value: 'ALL', label: 'All Bank Accounts' },
+                ...accounts.map((a) => ({
+                  value: a.id,
+                  label: `${a.accountNumber} (${a.customerName}) — ${a.accountType}`,
+                })),
+              ]}
+            />
           </div>
 
           {/* Type Filter */}
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1">Transaction Category</label>
-            <select
+            <TypeableSelect
+              allowCustom={false}
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white text-slate-800"
-            >
-              <option value="ALL">All Categories</option>
-              <option value="DEPOSIT">Cash Deposit</option>
-              <option value="WITHDRAWAL">Cash Withdrawal</option>
-              <option value="TRANSFER_IN">Transfer Received</option>
-              <option value="TRANSFER_OUT">Transfer Sent</option>
-              <option value="LOAN_DISBURSEMENT">Loan Disbursement</option>
-              <option value="EMI_PAYMENT">Loan EMI Repayment</option>
-              <option value="FD_INTEREST">FD Interest / Payout</option>
-            </select>
+              onChange={(val) => setTypeFilter(val)}
+              placeholder="Type or select category..."
+              options={[
+                { value: 'ALL', label: 'All Categories' },
+                { value: 'DEPOSIT', label: 'Cash Deposit' },
+                { value: 'WITHDRAWAL', label: 'Cash Withdrawal' },
+                { value: 'TRANSFER_IN', label: 'Transfer Received' },
+                { value: 'TRANSFER_OUT', label: 'Transfer Sent' },
+                { value: 'LOAN_DISBURSEMENT', label: 'Loan Disbursement' },
+                { value: 'EMI_PAYMENT', label: 'Loan EMI Repayment' },
+                { value: 'FD_INTEREST', label: 'FD Interest / Payout' },
+              ]}
+            />
           </div>
 
           {/* Start Date */}

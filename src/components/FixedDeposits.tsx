@@ -2,16 +2,13 @@ import React, { useState } from 'react';
 import {
   PiggyBank,
   PlusCircle,
-  Clock,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
-  TrendingUp,
   X,
-  FileCheck,
 } from 'lucide-react';
 import { FixedDeposit, BankAccount, Customer } from '../types/banking';
 import { calculateFDMaturity, formatCurrency } from '../utils/finance';
+import { TypeableSelect } from './TypeableSelect';
 
 interface FixedDepositsProps {
   fixedDeposits: FixedDeposit[];
@@ -35,10 +32,19 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
   onCloseFD,
 }) => {
   const [showOpenModal, setShowOpenModal] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0]?.id || '');
-  const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || '');
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
   const [principalAmount, setPrincipalAmount] = useState<number>(5000);
-  const [tenureMonths, setTenureMonths] = useState<number>(12);
+  const [tenureMonths, setTenureMonths] = useState<number>(6);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
+
+  const effectiveCustomerId = selectedCustomerId || customers[0]?.id || '';
+  const customerAccounts = accounts.filter((a) => a.customerId === effectiveCustomerId);
+  const effectiveAccountId =
+    customerAccounts.some((a) => a.id === selectedAccountId)
+      ? selectedAccountId
+      : customerAccounts[0]?.id || accounts[0]?.id || '';
 
   const ratesMap: Record<number, number> = {
     6: 5.5,
@@ -53,12 +59,27 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
 
   const handleOpenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (principalAmount <= 0) return;
+    setErrorMessage('');
+
+    if (principalAmount <= 0) {
+      setErrorMessage('Please enter a valid deposit principal amount greater than zero.');
+      return;
+    }
+
     try {
-      onOpenFD(selectedCustomerId, selectedAccountId, principalAmount, tenureMonths, selectedRate);
+      onOpenFD(
+        effectiveCustomerId,
+        effectiveAccountId,
+        principalAmount,
+        tenureMonths,
+        selectedRate
+      );
       setShowOpenModal(false);
+      setSuccessMessage(
+        `Fixed Deposit Certificate opened for ${formatCurrency(principalAmount)} (${tenureMonths} Months @ ${selectedRate}% p.a. — Maturity: ${formatCurrency(projection.maturityAmount)}).`
+      );
     } catch (err: any) {
-      alert(err.message || 'Failed to open Fixed Deposit.');
+      setErrorMessage(err?.message || 'Failed to open Fixed Deposit.');
     }
   };
 
@@ -77,13 +98,32 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
           </p>
         </div>
         <button
-          onClick={() => setShowOpenModal(true)}
+          onClick={() => {
+            setErrorMessage('');
+            setShowOpenModal(true);
+          }}
           className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white flex items-center gap-1.5 shadow-sm transition"
         >
           <PlusCircle className="w-4 h-4" />
           <span>Open Fixed Deposit</span>
         </button>
       </div>
+
+      {/* Success Banner */}
+      {successMessage && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 font-medium">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+          <button
+            onClick={() => setSuccessMessage('')}
+            className="text-emerald-600 hover:text-emerald-800 p-1"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* KPI Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -167,12 +207,11 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
                     {fd.status === 'ACTIVE' && (
                       <button
                         onClick={() => {
-                          if (
-                            confirm(
-                              `Liquidate FD #${fd.fdNumber}? If closing prematurely before ${fd.maturityDate}, a 1% premature penalty will be deducted.`
-                            )
-                          ) {
+                          try {
                             onCloseFD(fd.id);
+                            setSuccessMessage(`Fixed Deposit #${fd.fdNumber} settled and liquidated.`);
+                          } catch (err: any) {
+                            setErrorMessage(err?.message || 'Failed to liquidate Fixed Deposit.');
                           }
                         }}
                         className="px-3 py-1 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 font-semibold text-[11px] transition shadow-2xs"
@@ -213,38 +252,48 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
             </div>
 
             <form onSubmit={handleOpenSubmit} className="p-6 space-y-4">
+              {errorMessage && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Customer *</label>
-                <select
+                <TypeableSelect
                   required
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.fullName} ({c.customerId})
-                    </option>
-                  ))}
-                </select>
+                  allowCustom={false}
+                  value={effectiveCustomerId}
+                  onChange={(nextCustomerId) => {
+                    setSelectedCustomerId(nextCustomerId);
+                    const nextAccounts = accounts.filter((a) => a.customerId === nextCustomerId);
+                    setSelectedAccountId(nextAccounts[0]?.id || '');
+                  }}
+                  placeholder="Type or select customer"
+                  options={customers.map((c) => ({
+                    value: c.id,
+                    label: `${c.fullName} (${c.customerId})`,
+                  }))}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Funding Account *</label>
-                <select
-                  required
-                  value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {accounts
-                    .filter((a) => a.customerId === selectedCustomerId)
-                    .map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.accountNumber} ({acc.accountType}) [Bal: {formatCurrency(acc.balance)}]
-                      </option>
-                    ))}
-                </select>
+                <TypeableSelect
+                  allowCustom={false}
+                  value={effectiveAccountId}
+                  onChange={(val) => setSelectedAccountId(val)}
+                  placeholder="Type or select funding account"
+                  options={
+                    accounts.length > 0
+                      ? (customerAccounts.length > 0 ? customerAccounts : accounts).map((acc) => ({
+                          value: acc.id,
+                          label: `${acc.accountNumber} (${acc.accountType}) [Bal: ${formatCurrency(acc.balance)}]`,
+                        }))
+                      : [{ value: '', label: 'Direct Term Deposit (No linked account)' }]
+                  }
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -252,28 +301,37 @@ export const FixedDeposits: React.FC<FixedDepositsProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Deposit Principal ($)</label>
                   <input
                     type="number"
-                    min="500"
-                    step="100"
+                    min="1"
+                    step="any"
                     required
-                    value={principalAmount}
-                    onChange={(e) => setPrincipalAmount(Number(e.target.value))}
+                    placeholder="Enter principal amount"
+                    value={principalAmount === 0 ? '' : principalAmount}
+                    onChange={(e) =>
+                      setPrincipalAmount(e.target.value === '' ? 0 : Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tenure Period</label>
-                  <select
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Tenure Period (Months)</label>
+                  <TypeableSelect
                     value={tenureMonths}
-                    onChange={(e) => setTenureMonths(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    <option value={6}>6 Months @ 5.50%</option>
-                    <option value={12}>12 Months @ 6.50%</option>
-                    <option value={24}>24 Months @ 7.00%</option>
-                    <option value={36}>36 Months @ 7.25%</option>
-                    <option value={60}>60 Months @ 7.50%</option>
-                  </select>
+                    onChange={(val) => {
+                      const parsed = parseInt(String(val), 10);
+                      if (!isNaN(parsed) && parsed > 0) {
+                        setTenureMonths(parsed);
+                      }
+                    }}
+                    placeholder="Type months or select tenure"
+                    options={[
+                      { value: 6, label: '6 Months @ 5.50%' },
+                      { value: 12, label: '12 Months @ 6.50%' },
+                      { value: 24, label: '24 Months @ 7.00%' },
+                      { value: 36, label: '36 Months @ 7.25%' },
+                      { value: 60, label: '60 Months @ 7.50%' },
+                    ]}
+                  />
                 </div>
               </div>
 

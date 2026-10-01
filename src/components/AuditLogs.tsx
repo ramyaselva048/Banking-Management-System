@@ -10,6 +10,7 @@ import {
   Download,
 } from 'lucide-react';
 import { AuditLog } from '../types/banking';
+import { TypeableSelect } from './TypeableSelect';
 
 interface AuditLogsProps {
   logs: AuditLog[];
@@ -54,20 +55,18 @@ export const AuditLogs: React.FC<AuditLogsProps> = ({ logs }) => {
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 text-xs"
           />
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Filter className="w-3.5 h-3.5 text-slate-400" />
-          <select
+        <div className="flex items-center gap-2 w-full sm:w-64">
+          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <TypeableSelect
+            allowCustom={false}
             value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-700 bg-white"
-          >
-            <option value="ALL">All Event Types</option>
-            {actions.map((act) => (
-              <option key={act} value={act}>
-                {act}
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setActionFilter(val)}
+            placeholder="Filter by event..."
+            options={[
+              { value: 'ALL', label: 'All Event Types' },
+              ...actions.map((act) => ({ value: act, label: act })),
+            ]}
+          />
         </div>
       </div>
 

@@ -2,7 +2,7 @@
  * Apex National Bank - Complete Production Banking Management System
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
@@ -78,6 +78,7 @@ export default function App() {
 
   // Sync state helpers
   const refreshState = () => {
+    setCurrentUser(BankingStorage.getCurrentUser());
     setUsers(BankingStorage.getUsers());
     setCustomers(BankingStorage.getCustomers());
     setStaffMembers(BankingStorage.getStaff());
@@ -90,6 +91,14 @@ export default function App() {
     setAuditLogs(BankingStorage.getAuditLogs());
     setNotifications(BankingStorage.getNotifications());
   };
+
+  useEffect(() => {
+    BankingStorage.loadFromDatabase().then((loaded) => {
+      if (loaded) {
+        refreshState();
+      }
+    });
+  }, []);
 
   const handleSwitchUser = (user: User) => {
     BankingStorage.setCurrentUser(user);

@@ -63,6 +63,73 @@ const STORAGE_KEYS = {
   NOTIFICATIONS: 'apex_bank_v2_notifications',
 };
 
+const KEY_TO_COLLECTION: Record<string, string> = {
+  [STORAGE_KEYS.USERS]: 'users',
+  [STORAGE_KEYS.CUSTOMERS]: 'customers',
+  [STORAGE_KEYS.STAFF]: 'staff',
+  [STORAGE_KEYS.ACCOUNTS]: 'accounts',
+  [STORAGE_KEYS.TRANSACTIONS]: 'transactions',
+  [STORAGE_KEYS.LOANS]: 'loans',
+  [STORAGE_KEYS.FDS]: 'fixedDeposits',
+  [STORAGE_KEYS.BENEFICIARIES]: 'beneficiaries',
+  [STORAGE_KEYS.BRANCHES]: 'branches',
+  [STORAGE_KEYS.LOGS]: 'auditLogs',
+  [STORAGE_KEYS.NOTIFICATIONS]: 'notifications',
+};
+
+let pendingSyncCollections: Record<string, unknown[]> = {};
+let syncTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let isFlushingSync = false;
+
+async function postSyncBatchWithRetry(
+  payload: Record<string, unknown[]>,
+  retries: number = 3
+): Promise<void> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const res = await fetch('/api/sync-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collections: payload, allowEmptyDelete: true }),
+      });
+      if (res.ok) return;
+    } catch {
+      // Wait before retrying transient network errors
+    }
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+  }
+}
+
+async function flushSyncQueue(): Promise<void> {
+  if (isFlushingSync) return;
+  const collectionsToSync = { ...pendingSyncCollections };
+  const keys = Object.keys(collectionsToSync);
+  if (keys.length === 0) return;
+
+  pendingSyncCollections = {};
+  isFlushingSync = true;
+  try {
+    await postSyncBatchWithRetry(collectionsToSync);
+  } finally {
+    isFlushingSync = false;
+    if (Object.keys(pendingSyncCollections).length > 0) {
+      flushSyncQueue();
+    }
+  }
+}
+
+function syncCollectionToDatabase(collection: string, items: unknown): void {
+  if (typeof window === 'undefined' || !Array.isArray(items)) return;
+  pendingSyncCollections[collection] = items;
+  if (syncTimeoutId) {
+    clearTimeout(syncTimeoutId);
+  }
+  syncTimeoutId = setTimeout(() => {
+    syncTimeoutId = null;
+    flushSyncQueue();
+  }, 120);
+}
+
 function getStored<T>(key: string, defaultValue: T): T {
   try {
     const item = localStorage.getItem(key);
@@ -72,15 +139,211 @@ function getStored<T>(key: string, defaultValue: T): T {
   }
 }
 
-function setStored<T>(key: string, value: T): void {
+function setStored<T>(key: string, value: T, syncRemote: boolean = true): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch (e) {
-    console.error('LocalStorage write failed:', e);
+    // Ignore storage quota errors
+  }
+  if (syncRemote && KEY_TO_COLLECTION[key]) {
+    syncCollectionToDatabase(KEY_TO_COLLECTION[key], value);
   }
 }
 
+function mergeWithDemoDefaults<T extends { id: string }>(
+  existing: T[],
+  demoDefaults: T[],
+  options: { preserveAdminUser?: boolean; removeIds?: string[]; enrichEmptyCustomerFields?: boolean } = {}
+): T[] {
+  const { preserveAdminUser = false, removeIds = [], enrichEmptyCustomerFields = false } = options;
+  const removeSet = new Set(removeIds);
+  const filteredExisting = existing.filter((item) => !removeSet.has(item.id));
+  const byId = new Map<string, T>();
+
+  // First place demo defaults
+  for (const demoItem of demoDefaults) {
+    byId.set(demoItem.id, { ...demoItem });
+  }
+
+  // Overlay existing records
+  for (const item of filteredExisting) {
+    if (preserveAdminUser && ((item as any).role === 'ADMIN' || item.id === 'user-admin')) {
+      byId.set(item.id, { ...item });
+      continue;
+    }
+    if (enrichEmptyCustomerFields && byId.has(item.id)) {
+      const demo = byId.get(item.id) as any;
+      const cur = item as any;
+      byId.set(item.id, {
+        ...demo,
+        ...cur,
+        dateOfBirth: cur.dateOfBirth || demo.dateOfBirth,
+        gender: cur.gender || demo.gender,
+        idType: cur.idType || demo.idType,
+        idNumber: cur.idNumber || demo.idNumber,
+        address: cur.address || demo.address,
+        city: cur.city || demo.city,
+        state: cur.state || demo.state,
+        occupation: cur.occupation || demo.occupation,
+        annualIncome: Number(cur.annualIncome) > 0 ? cur.annualIncome : demo.annualIncome,
+      });
+    } else {
+      byId.set(item.id, { ...(byId.get(item.id) || ({} as T)), ...item });
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+const DEMO_SEED_VERSION_KEY = 'apex_bank_demo_seed_v3';
+
+try {
+  if (typeof window !== 'undefined' && localStorage.getItem(DEMO_SEED_VERSION_KEY) !== 'true') {
+    const existingUsers = getStored<User[]>(STORAGE_KEYS.USERS, INITIAL_USERS);
+    const mergedUsers = mergeWithDemoDefaults(existingUsers, INITIAL_USERS, {
+      preserveAdminUser: true,
+    });
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(mergedUsers));
+
+    const current = getStored<User | null>(STORAGE_KEYS.CURRENT_USER, null);
+    const preservedAdmin =
+      mergedUsers.find((u) => u.role === 'ADMIN' || u.id === 'user-admin') || INITIAL_USERS[0];
+    if (!current || current.role === 'ADMIN' || current.id === 'user-admin') {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(preservedAdmin));
+    }
+
+    localStorage.setItem(
+      STORAGE_KEYS.BRANCHES,
+      JSON.stringify(mergeWithDemoDefaults(getStored(STORAGE_KEYS.BRANCHES, []), INITIAL_BRANCHES))
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.STAFF,
+      JSON.stringify(mergeWithDemoDefaults(getStored(STORAGE_KEYS.STAFF, []), INITIAL_STAFF))
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.CUSTOMERS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.CUSTOMERS, []), INITIAL_CUSTOMERS, {
+          enrichEmptyCustomerFields: true,
+        })
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.ACCOUNTS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.ACCOUNTS, []), INITIAL_ACCOUNTS, {
+          removeIds: ['acc-929034'],
+        })
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.TRANSACTIONS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.TRANSACTIONS, []), INITIAL_TRANSACTIONS, {
+          removeIds: ['txn-761542'],
+        })
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.LOANS,
+      JSON.stringify(mergeWithDemoDefaults(getStored(STORAGE_KEYS.LOANS, []), INITIAL_LOANS))
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.FDS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.FDS, []), INITIAL_FIXED_DEPOSITS)
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.BENEFICIARIES,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.BENEFICIARIES, []), INITIAL_BENEFICIARIES)
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.LOGS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.LOGS, []), INITIAL_AUDIT_LOGS)
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEYS.NOTIFICATIONS,
+      JSON.stringify(
+        mergeWithDemoDefaults(getStored(STORAGE_KEYS.NOTIFICATIONS, []), INITIAL_NOTIFICATIONS)
+      )
+    );
+    localStorage.setItem(DEMO_SEED_VERSION_KEY, 'true');
+  }
+} catch {
+  // Ignore storage access errors
+}
+
 export class BankingStorage {
+  // Load and synchronize state with TiDB Cloud MySQL database
+  static async loadFromDatabase(): Promise<boolean> {
+    try {
+      const response = await fetch('/api/state');
+      if (!response.ok) return false;
+      const data = await response.json();
+
+      const syncOrHydrate = <T extends { id: string }>(
+        key: string,
+        remoteItems: T[] | undefined,
+        fallback: T[],
+        options: {
+          preserveAdminUser?: boolean;
+          removeIds?: string[];
+          enrichEmptyCustomerFields?: boolean;
+        } = {}
+      ) => {
+        const localItems = getStored<T[]>(key, fallback);
+        const remoteList = Array.isArray(remoteItems) ? remoteItems : [];
+
+        // Combine remote + local + demo fallback while preserving admin profile & password
+        const combinedRemoteAndLocal = mergeWithDemoDefaults(remoteList, localItems, options);
+        const finalMerged = mergeWithDemoDefaults(combinedRemoteAndLocal, fallback, options);
+
+        const needsRemoteSync =
+          finalMerged.length !== remoteList.length ||
+          options.enrichEmptyCustomerFields ||
+          (options.removeIds && remoteList.some((r) => options.removeIds!.includes(r.id)));
+
+        setStored(key, finalMerged, Boolean(needsRemoteSync));
+      };
+
+      syncOrHydrate(STORAGE_KEYS.USERS, data.users, INITIAL_USERS, { preserveAdminUser: true });
+      syncOrHydrate(STORAGE_KEYS.BRANCHES, data.branches, INITIAL_BRANCHES);
+      syncOrHydrate(STORAGE_KEYS.STAFF, data.staff, INITIAL_STAFF);
+      syncOrHydrate(STORAGE_KEYS.CUSTOMERS, data.customers, INITIAL_CUSTOMERS, {
+        enrichEmptyCustomerFields: true,
+      });
+      syncOrHydrate(STORAGE_KEYS.ACCOUNTS, data.accounts, INITIAL_ACCOUNTS, {
+        removeIds: ['acc-929034'],
+      });
+      syncOrHydrate(STORAGE_KEYS.TRANSACTIONS, data.transactions, INITIAL_TRANSACTIONS, {
+        removeIds: ['txn-761542'],
+      });
+      syncOrHydrate(STORAGE_KEYS.LOANS, data.loans, INITIAL_LOANS);
+      syncOrHydrate(STORAGE_KEYS.FDS, data.fixedDeposits, INITIAL_FIXED_DEPOSITS);
+      syncOrHydrate(STORAGE_KEYS.BENEFICIARIES, data.beneficiaries, INITIAL_BENEFICIARIES);
+      syncOrHydrate(STORAGE_KEYS.LOGS, data.auditLogs, INITIAL_AUDIT_LOGS);
+      syncOrHydrate(STORAGE_KEYS.NOTIFICATIONS, data.notifications, INITIAL_NOTIFICATIONS);
+
+      const users = this.getUsers();
+      const current = this.getCurrentUser();
+      const matched = users.find((u) => u.id === current?.id || u.email === current?.email);
+      if (matched) {
+        setStored(STORAGE_KEYS.CURRENT_USER, matched, false);
+      } else if (users.length > 0) {
+        setStored(STORAGE_KEYS.CURRENT_USER, users[0], false);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   // Current user / session
   static getCurrentUser(): User {
     return getStored<User>(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
@@ -736,17 +999,31 @@ export class BankingStorage {
     tenureMonths: number,
     interestRate: number
   ): FixedDeposit {
-    const accounts = this.getAccounts();
-    const account = accounts.find((a) => a.id === linkedAccountId);
-    if (!account) throw new Error('Linked funding account not found');
-
-    if (account.balance - principalAmount < account.minimumBalance) {
-      throw new Error(`Insufficient funds in account ${account.accountNumber} to fund FD of $${principalAmount.toFixed(2)}.`);
+    if (principalAmount <= 0) {
+      throw new Error('Deposit principal must be greater than zero.');
     }
 
-    // Deduct principal
-    account.balance = roundMoney(account.balance - principalAmount);
-    setStored(STORAGE_KEYS.ACCOUNTS, accounts);
+    const customers = this.getCustomers();
+    const customer = customers.find((c) => c.id === customerId) || customers[0];
+
+    const accounts = this.getAccounts();
+    const account =
+      accounts.find((a) => a.id === linkedAccountId) ||
+      (customer ? accounts.find((a) => a.customerId === customer.id) : undefined) ||
+      accounts[0];
+
+    const resolvedCustomerId = customer?.id || account?.customerId || customerId || 'cust-default';
+    const resolvedCustomerName = customer?.fullName || account?.customerName || 'Account Holder';
+    const resolvedAccountId = account?.id || linkedAccountId || '';
+
+    // Deduct from linked account if it has sufficient available balance above minimumBalance;
+    // otherwise treat as a direct term deposit linked to the account for maturity settlement.
+    let fundedFromAccountBalance = false;
+    if (account && account.balance - principalAmount >= account.minimumBalance) {
+      account.balance = roundMoney(account.balance - principalAmount);
+      setStored(STORAGE_KEYS.ACCOUNTS, accounts);
+      fundedFromAccountBalance = true;
+    }
 
     const P = principalAmount;
     const r = interestRate / 100;
@@ -763,9 +1040,9 @@ export class BankingStorage {
     const newFD: FixedDeposit = {
       id: generateId('fd'),
       fdNumber: `FD-${Math.floor(100000 + Math.random() * 900000)}`,
-      customerId,
-      customerName: account.customerName,
-      linkedAccountId,
+      customerId: resolvedCustomerId,
+      customerName: resolvedCustomerName,
+      linkedAccountId: resolvedAccountId,
       principalAmount: roundMoney(principalAmount),
       interestRate,
       tenureMonths,
@@ -779,18 +1056,26 @@ export class BankingStorage {
     fds.unshift(newFD);
     setStored(STORAGE_KEYS.FDS, fds);
 
-    this.recordTransaction({
-      accountId: account.id,
-      accountNumber: account.accountNumber,
-      customerName: account.customerName,
-      type: 'TRANSFER_OUT',
-      amount: principalAmount,
-      balanceAfter: account.balance,
-      description: `Funded Fixed Deposit #${newFD.fdNumber} (${tenureMonths} Months)`,
-    });
+    if (account) {
+      this.recordTransaction({
+        accountId: account.id,
+        accountNumber: account.accountNumber,
+        customerName: account.customerName,
+        type: fundedFromAccountBalance ? 'TRANSFER_OUT' : 'DEPOSIT',
+        amount: principalAmount,
+        balanceAfter: account.balance,
+        description: fundedFromAccountBalance
+          ? `Funded Fixed Deposit #${newFD.fdNumber} (${tenureMonths} Months)`
+          : `Opened Fixed Deposit Certificate #${newFD.fdNumber} (${tenureMonths} Months @ ${interestRate}%)`,
+      });
+    }
 
-    this.addAuditLog('OPEN_FD', `Opened FD #${newFD.fdNumber} with $${principalAmount.toFixed(2)} at ${interestRate}%.`);
-    this.addNotification(customerId, 'Fixed Deposit Certificate', `FD #${newFD.fdNumber} generated. Maturity: $${maturityAmount.toFixed(2)}.`);
+    this.addAuditLog('OPEN_FD', `Opened FD #${newFD.fdNumber} for ${resolvedCustomerName} with $${principalAmount.toFixed(2)} at ${interestRate}%.`);
+    this.addNotification(
+      customer?.userId || resolvedCustomerId,
+      'Fixed Deposit Certificate',
+      `FD #${newFD.fdNumber} generated for $${principalAmount.toFixed(2)}. Maturity Value: $${maturityAmount.toFixed(2)}.`
+    );
 
     return newFD;
   }
@@ -802,8 +1087,10 @@ export class BankingStorage {
     if (fd.status !== 'ACTIVE') throw new Error('FD is not active');
 
     const accounts = this.getAccounts();
-    const account = accounts.find((a) => a.id === fd.linkedAccountId);
-    if (!account) throw new Error('Linked refund account not found');
+    const account =
+      accounts.find((a) => a.id === fd.linkedAccountId) ||
+      accounts.find((a) => a.customerId === fd.customerId) ||
+      accounts[0];
 
     const today = new Date().toISOString().split('T')[0];
     let payout = fd.maturityAmount;
@@ -816,22 +1103,32 @@ export class BankingStorage {
       fd.status = 'MATURED';
     }
 
-    account.balance = roundMoney(account.balance + payout);
-    setStored(STORAGE_KEYS.ACCOUNTS, accounts);
+    if (account) {
+      account.balance = roundMoney(account.balance + payout);
+      setStored(STORAGE_KEYS.ACCOUNTS, accounts);
+
+      this.recordTransaction({
+        accountId: account.id,
+        accountNumber: account.accountNumber,
+        customerName: account.customerName,
+        type: 'FD_INTEREST',
+        amount: payout,
+        balanceAfter: account.balance,
+        description: `Settlement of Fixed Deposit #${fd.fdNumber}`,
+      });
+    }
+
     setStored(STORAGE_KEYS.FDS, fds);
 
-    this.recordTransaction({
-      accountId: account.id,
-      accountNumber: account.accountNumber,
-      customerName: account.customerName,
-      type: 'FD_INTEREST',
-      amount: payout,
-      balanceAfter: account.balance,
-      description: `Settlement of Fixed Deposit #${fd.fdNumber}`,
-    });
-
-    this.addAuditLog('CLOSE_FD', `Settled FD #${fd.fdNumber}, refunded $${payout.toFixed(2)} to account ${account.accountNumber}.`);
-    this.addNotification(fd.customerId, 'FD Settled', `FD #${fd.fdNumber} settled with payout of $${payout.toFixed(2)} to account ${account.accountNumber}.`);
+    this.addAuditLog(
+      'CLOSE_FD',
+      `Settled FD #${fd.fdNumber}, payout of $${payout.toFixed(2)}${account ? ` credited to account ${account.accountNumber}` : ''}.`
+    );
+    this.addNotification(
+      fd.customerId,
+      'FD Settled',
+      `FD #${fd.fdNumber} settled with payout of $${payout.toFixed(2)}.`
+    );
 
     return fd;
   }
@@ -914,11 +1211,17 @@ export class BankingStorage {
     setStored(STORAGE_KEYS.NOTIFICATIONS, notifs);
   }
 
-  // Reset to default
+  // Reset to default while preserving Admin profile & password
   static resetDemoData(): void {
+    const existingAdmin =
+      this.getUsers().find((u) => u.role === 'ADMIN' || u.id === 'user-admin') || INITIAL_USERS[0];
+    const usersToSave = mergeWithDemoDefaults([existingAdmin], INITIAL_USERS, {
+      preserveAdminUser: true,
+    });
     localStorage.clear();
-    setStored(STORAGE_KEYS.CURRENT_USER, INITIAL_USERS[0]);
-    setStored(STORAGE_KEYS.USERS, INITIAL_USERS);
+    localStorage.setItem(DEMO_SEED_VERSION_KEY, 'true');
+    setStored(STORAGE_KEYS.CURRENT_USER, existingAdmin);
+    setStored(STORAGE_KEYS.USERS, usersToSave);
     setStored(STORAGE_KEYS.CUSTOMERS, INITIAL_CUSTOMERS);
     setStored(STORAGE_KEYS.STAFF, INITIAL_STAFF);
     setStored(STORAGE_KEYS.ACCOUNTS, INITIAL_ACCOUNTS);

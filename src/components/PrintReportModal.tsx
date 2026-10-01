@@ -20,6 +20,7 @@ import {
 import { formatCurrency } from '../utils/finance';
 import { generateAccountStatementPDF } from '../utils/export';
 import { executeDirectPrint } from '../utils/directPrint';
+import { TypeableSelect } from './TypeableSelect';
 
 interface PrintReportModalProps {
   isOpen: boolean;
@@ -190,16 +191,18 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               <label className="block text-[11px] font-semibold text-slate-500 mb-1">
                 Report Format
               </label>
-              <select
+              <TypeableSelect
+                allowCustom={false}
                 value={reportType}
-                onChange={(e) => setReportType(e.target.value as any)}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-800"
-              >
-                <option value="STATEMENT">Financial Monitoring Statement</option>
-                <option value="FINANCIAL">Executive Liquidity Dashboard</option>
-                <option value="CUSTOMERS">Customer Master Directory</option>
-                <option value="LOANS">Credit & Loan Portfolio</option>
-              </select>
+                onChange={(val) => setReportType(val as any)}
+                placeholder="Type or select format..."
+                options={[
+                  { value: 'STATEMENT', label: 'Financial Monitoring Statement' },
+                  { value: 'FINANCIAL', label: 'Executive Liquidity Dashboard' },
+                  { value: 'CUSTOMERS', label: 'Customer Master Directory' },
+                  { value: 'LOANS', label: 'Credit & Loan Portfolio' },
+                ]}
+              />
             </div>
 
             {reportType === 'STATEMENT' && (
@@ -207,17 +210,16 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
                 <label className="block text-[11px] font-semibold text-slate-500 mb-1">
                   Target Account
                 </label>
-                <select
+                <TypeableSelect
+                  allowCustom={false}
                   value={selectedAccountId}
-                  onChange={(e) => setSelectedAccountId(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-800"
-                >
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.accountNumber} ({a.customerName} - {a.accountType})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedAccountId(val)}
+                  placeholder="Type or select account..."
+                  options={accounts.map((a) => ({
+                    value: a.id,
+                    label: `${a.accountNumber} (${a.customerName} - ${a.accountType})`,
+                  }))}
+                />
               </div>
             )}
 

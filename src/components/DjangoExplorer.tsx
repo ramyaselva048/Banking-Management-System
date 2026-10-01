@@ -55,18 +55,22 @@ INSTALLED_APPS = [
     'apps.reports',
 ]
 
-# Modular Database Switcher: SQLite (dev) or MySQL (prod)
-DB_ENGINE = os.getenv('DATABASE_ENGINE', 'sqlite').lower()
+# Modular Database Switcher: TiDB Cloud MySQL (default) or SQLite
+DB_ENGINE = os.getenv('DATABASE_ENGINE', 'mysql').lower()
 
 if DB_ENGINE == 'mysql':
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'apex_bank_db'),
-            'USER': os.getenv('DB_USER', 'root'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', '127.0.0.1'),
-            'PORT': os.getenv('DB_PORT', '3306'),
+            'NAME': os.getenv('DB_NAME', 'apex_bank'),
+            'USER': os.getenv('DB_USER', '3s5MtfbFqMWrRVu.root'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'sqdOwwQZIjyjgz0Z'),
+            'HOST': os.getenv('DB_HOST', 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com'),
+            'PORT': os.getenv('DB_PORT', '4000'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'ssl': {'ca': '/etc/ssl/certs/ca-certificates.crt'},
+            }
         }
     }
 else:

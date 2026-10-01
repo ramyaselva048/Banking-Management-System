@@ -30,6 +30,7 @@ import {
 import * as XLSX from 'xlsx';
 import { StaffMember, Branch, StaffStatus } from '../types/banking';
 import { formatCurrency } from '../utils/finance';
+import { TypeableSelect } from './TypeableSelect';
 
 interface StaffManagementProps {
   staffMembers: StaffMember[];
@@ -120,7 +121,10 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
     e.preventDefault();
     if (!fullName || !email || !password.trim()) return;
 
-    const assignedBranch = branches.find((b) => b.id === branchId) || branches[0];
+    const assignedBranch =
+      branches.find(
+        (b) => b.id === branchId || b.name.toLowerCase() === branchId.toLowerCase()
+      ) || branches[0];
     const initialPass = password.trim();
 
     onAddStaff(
@@ -129,8 +133,8 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
         fullName,
         email,
         phone,
-        branchId: assignedBranch?.id || '',
-        branchName: assignedBranch?.name || 'Unassigned',
+        branchId: assignedBranch?.id || branchId || '',
+        branchName: assignedBranch?.name || branchId || 'Unassigned',
         department,
         designation,
         approvalLimit: Number(approvalLimit) || 0,
@@ -481,11 +485,7 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                       {/* Delete / Offboard Staff */}
                       <button
-                        onClick={() => {
-                          if (confirm(`Offboard staff officer ${staff.fullName} (${staff.employeeId})?`)) {
-                            onDeleteStaff(staff.id);
-                          }
-                        }}
+                        onClick={() => onDeleteStaff(staff.id)}
                         className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 transition"
                         title="Deallocate / Remove Staff"
                       >
@@ -562,49 +562,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Assign to Branch *</label>
-                  <select
-                    value={branchId}
-                    onChange={(e) => setBranchId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.branchCode})
-                      </option>
-                    ))}
-                  </select>
+                  <TypeableSelect
+                    value={branchId || branches[0]?.id || ''}
+                    onChange={(val) => setBranchId(val)}
+                    placeholder="Type or select branch"
+                    options={branches.map((b) => ({
+                      value: b.id,
+                      label: `${b.name} (${b.branchCode})`,
+                    }))}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-                  <select
+                  <TypeableSelect
                     value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    {departments.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setDepartment(val)}
+                    placeholder="Type or select department"
+                    options={departments.map((d) => ({ value: d, label: d }))}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Designation Role</label>
-                  <select
+                  <TypeableSelect
                     value={designation}
-                    onChange={(e) => setDesignation(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    {designations.map((des) => (
-                      <option key={des} value={des}>
-                        {des}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(val) => setDesignation(val)}
+                    placeholder="Type or select designation"
+                    options={designations.map((des) => ({ value: des, label: des }))}
+                  />
                 </div>
               </div>
 
@@ -654,10 +642,13 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 </label>
                 <input
                   type="number"
-                  step="5000"
-                  min="5000"
-                  value={approvalLimit}
-                  onChange={(e) => setApprovalLimit(Number(e.target.value))}
+                  step="any"
+                  min="0"
+                  placeholder="Enter approval limit"
+                  value={approvalLimit === 0 ? '' : approvalLimit}
+                  onChange={(e) =>
+                    setApprovalLimit(e.target.value === '' ? 0 : Number(e.target.value))
+                  }
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                 />
                 <span className="text-[10px] text-slate-400 mt-1 block">
@@ -711,18 +702,16 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Select New Destination Branch *
                 </label>
-                <select
+                <TypeableSelect
                   required
                   value={newBranchId}
-                  onChange={(e) => setNewBranchId(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} ({b.branchCode}) &bull; {b.city}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setNewBranchId(val)}
+                  placeholder="Type or select destination branch"
+                  options={branches.map((b) => ({
+                    value: b.id,
+                    label: `${b.name} (${b.branchCode}) • ${b.city}`,
+                  }))}
+                />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -759,42 +748,37 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
             <form onSubmit={handleEditSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Designation</label>
-                <select
+                <TypeableSelect
                   value={editingStaff.designation}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, designation: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {designations.map((des) => (
-                    <option key={des} value={des}>
-                      {des}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setEditingStaff({ ...editingStaff, designation: val })}
+                  placeholder="Type or select designation"
+                  options={designations.map((des) => ({ value: des, label: des }))}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Department</label>
-                <select
+                <TypeableSelect
                   value={editingStaff.department}
-                  onChange={(e) => setEditingStaff({ ...editingStaff, department: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setEditingStaff({ ...editingStaff, department: val })}
+                  placeholder="Type or select department"
+                  options={departments.map((d) => ({ value: d, label: d }))}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Approval Cap ($)</label>
                 <input
                   type="number"
-                  step="5000"
-                  value={editingStaff.approvalLimit}
+                  step="any"
+                  min="0"
+                  placeholder="Enter approval cap"
+                  value={editingStaff.approvalLimit === 0 ? '' : editingStaff.approvalLimit}
                   onChange={(e) =>
-                    setEditingStaff({ ...editingStaff, approvalLimit: Number(e.target.value) })
+                    setEditingStaff({
+                      ...editingStaff,
+                      approvalLimit: e.target.value === '' ? 0 : Number(e.target.value),
+                    })
                   }
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                 />
@@ -802,17 +786,18 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
-                <select
+                <TypeableSelect
                   value={editingStaff.status}
-                  onChange={(e) =>
-                    setEditingStaff({ ...editingStaff, status: e.target.value as StaffStatus })
+                  onChange={(val) =>
+                    setEditingStaff({ ...editingStaff, status: val as StaffStatus })
                   }
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="ON_LEAVE">ON LEAVE</option>
-                  <option value="SUSPENDED">SUSPENDED</option>
-                </select>
+                  placeholder="Type or select status"
+                  options={[
+                    { value: 'ACTIVE', label: 'ACTIVE' },
+                    { value: 'ON_LEAVE', label: 'ON LEAVE' },
+                    { value: 'SUSPENDED', label: 'SUSPENDED' },
+                  ]}
+                />
               </div>
 
               {/* Reset Login Password */}

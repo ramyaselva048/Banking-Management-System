@@ -21,6 +21,7 @@ import {
 import { Customer, BankAccount, Loan, Branch, KYCStatus } from '../types/banking';
 import { exportCustomersToExcel } from '../utils/export';
 import { formatCurrency } from '../utils/finance';
+import { TypeableSelect } from './TypeableSelect';
 
 interface CustomerManagementProps {
   customers: Customer[];
@@ -71,12 +72,14 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
     kycStatus: 'VERIFIED' as KYCStatus,
   });
 
-  const handleBranchChange = (branchId: string) => {
-    const selected = branches.find((b) => b.id === branchId);
+  const handleBranchChange = (branchValue: string) => {
+    const selected = branches.find(
+      (b) => b.id === branchValue || b.name.toLowerCase() === branchValue.toLowerCase()
+    );
     setFormData((prev) => ({
       ...prev,
-      branchId,
-      branchName: selected ? selected.name : '',
+      branchId: selected ? selected.id : branchValue,
+      branchName: selected ? selected.name : branchValue,
     }));
   };
 
@@ -270,11 +273,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to permanently delete customer ${cust.fullName}?`)) {
-                            onDeleteCustomer(cust.id);
-                          }
-                        }}
+                        onClick={() => onDeleteCustomer(cust.id)}
                         className="p-1.5 rounded-lg border border-slate-200 hover:bg-rose-50 text-rose-600 transition"
                         title="Delete Customer"
                       >
@@ -353,17 +352,15 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Branch</label>
-                  <select
-                    value={formData.branchId}
-                    onChange={(e) => handleBranchChange(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    {branches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name} ({b.branchCode})
-                      </option>
-                    ))}
-                  </select>
+                  <TypeableSelect
+                    value={formData.branchId || formData.branchName || branches[0]?.id || ''}
+                    onChange={(val) => handleBranchChange(val)}
+                    placeholder="Type or select branch"
+                    options={branches.map((b) => ({
+                      value: b.id,
+                      label: `${b.name} (${b.branchCode})`,
+                    }))}
+                  />
                 </div>
 
                 <div>
@@ -378,28 +375,31 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
-                  <select
+                  <TypeableSelect
                     value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, gender: val as any })}
+                    placeholder="Type or select gender"
+                    options={[
+                      { value: 'Male', label: 'Male' },
+                      { value: 'Female', label: 'Female' },
+                      { value: 'Other', label: 'Other' },
+                    ]}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">ID Document Type</label>
-                  <select
+                  <TypeableSelect
                     value={formData.idType}
-                    onChange={(e) => setFormData({ ...formData, idType: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="Passport">Passport</option>
-                    <option value="Drivers License">Driver's License</option>
-                    <option value="National Identity Card">National Identity Card</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, idType: val })}
+                    placeholder="Type or select ID type"
+                    options={[
+                      { value: 'Passport', label: 'Passport' },
+                      { value: 'Drivers License', label: "Driver's License" },
+                      { value: 'National Identity Card', label: 'National Identity Card' },
+                      { value: 'Aadhaar / PAN Card', label: 'Aadhaar / PAN Card' },
+                    ]}
+                  />
                 </div>
 
                 <div>
@@ -408,7 +408,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                     type="text"
                     value={formData.idNumber}
                     onChange={(e) => setFormData({ ...formData, idNumber: e.target.value })}
-                    placeholder="e.g. USA-99443311"
+                    placeholder="Enter ID document number"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -419,7 +419,7 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                     type="text"
                     value={formData.occupation}
                     onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                    placeholder="e.g. Financial Analyst"
+                    placeholder="Enter occupation"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -428,9 +428,16 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Annual Income ($)</label>
                   <input
                     type="number"
-                    step="1000"
-                    value={formData.annualIncome}
-                    onChange={(e) => setFormData({ ...formData, annualIncome: Number(e.target.value) })}
+                    step="any"
+                    min="0"
+                    placeholder="Enter annual income"
+                    value={formData.annualIncome === 0 ? '' : formData.annualIncome}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        annualIncome: e.target.value === '' ? 0 : Number(e.target.value),
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -515,17 +522,18 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">KYC Status</label>
-                  <select
+                  <TypeableSelect
                     value={editingCustomer.kycStatus}
-                    onChange={(e) =>
-                      setEditingCustomer({ ...editingCustomer, kycStatus: e.target.value as KYCStatus })
+                    onChange={(val) =>
+                      setEditingCustomer({ ...editingCustomer, kycStatus: val as KYCStatus })
                     }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="VERIFIED">VERIFIED</option>
-                    <option value="PENDING">PENDING</option>
-                    <option value="REJECTED">REJECTED</option>
-                  </select>
+                    placeholder="Type or select KYC status"
+                    options={[
+                      { value: 'VERIFIED', label: 'VERIFIED' },
+                      { value: 'PENDING', label: 'PENDING' },
+                      { value: 'REJECTED', label: 'REJECTED' },
+                    ]}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Occupation</label>
@@ -540,9 +548,15 @@ export const CustomerManagement: React.FC<CustomerManagementProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Annual Income ($)</label>
                   <input
                     type="number"
-                    value={editingCustomer.annualIncome}
+                    step="any"
+                    min="0"
+                    placeholder="Enter annual income"
+                    value={editingCustomer.annualIncome === 0 ? '' : editingCustomer.annualIncome}
                     onChange={(e) =>
-                      setEditingCustomer({ ...editingCustomer, annualIncome: Number(e.target.value) })
+                      setEditingCustomer({
+                        ...editingCustomer,
+                        annualIncome: e.target.value === '' ? 0 : Number(e.target.value),
+                      })
                     }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />

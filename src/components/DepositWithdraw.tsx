@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { BankAccount, Transaction } from '../types/banking';
 import { formatCurrency } from '../utils/finance';
+import { TypeableSelect } from './TypeableSelect';
 
 interface DepositWithdrawProps {
   mode: 'DEPOSIT' | 'WITHDRAW';
@@ -31,7 +32,8 @@ export const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
   const [error, setError] = useState<string>('');
   const [lastReceipt, setLastReceipt] = useState<Transaction | null>(null);
 
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
+  const effectiveAccountId = selectedAccountId || accounts[0]?.id || '';
+  const selectedAccount = accounts.find((a) => a.id === effectiveAccountId);
   const numAmount = parseFloat(amount) || 0;
 
   const maxWithdraw = selectedAccount
@@ -146,18 +148,17 @@ export const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Select Bank Account *
             </label>
-            <select
+            <TypeableSelect
               required
-              value={selectedAccountId}
-              onChange={(e) => setSelectedAccountId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:ring-2 focus:ring-blue-500/20"
-            >
-              {accounts.map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.accountNumber} — {acc.customerName} ({acc.accountType}) [Bal: {formatCurrency(acc.balance)}]
-                </option>
-              ))}
-            </select>
+              allowCustom={false}
+              value={effectiveAccountId}
+              onChange={(val) => setSelectedAccountId(val)}
+              placeholder="Type or select bank account"
+              options={accounts.map((acc) => ({
+                value: acc.id,
+                label: `${acc.accountNumber} — ${acc.customerName} (${acc.accountType}) [Bal: ${formatCurrency(acc.balance)}]`,
+              }))}
+            />
           </div>
 
           {/* Account Details Callout */}
@@ -191,7 +192,7 @@ export const DepositWithdraw: React.FC<DepositWithdrawProps> = ({
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
               <input
                 type="number"
-                step="0.01"
+                step="any"
                 min="0.01"
                 required
                 placeholder="0.00"

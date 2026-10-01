@@ -17,6 +17,7 @@ import {
 import { Loan, BankAccount, Customer, LoanType, UserRole } from '../types/banking';
 import { calculateEMI, formatCurrency } from '../utils/finance';
 import { exportLoansToExcel } from '../utils/export';
+import { TypeableSelect } from './TypeableSelect';
 
 interface LoanManagementProps {
   loans: Loan[];
@@ -74,9 +75,12 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   // Repay modal
   const [repayTargetLoan, setRepayTargetLoan] = useState<Loan | null>(null);
   const [repayAccountId, setRepayAccountId] = useState<string>('');
+  const [repayError, setRepayError] = useState<string>('');
 
   // Filter
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+
+  const effectiveCustomerId = selectedCustomerId || customers[0]?.id || '';
 
   const filteredLoans = loans.filter((l) => {
     return statusFilter === 'ALL' || l.status === statusFilter;
@@ -84,8 +88,8 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
 
   const handleApplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (appAmount <= 0) return;
-    onApplyLoan(selectedCustomerId, appLoanType, appAmount, appTenure, appRate, appPurpose);
+    if (appAmount <= 0 || !effectiveCustomerId) return;
+    onApplyLoan(effectiveCustomerId, appLoanType, appAmount, appTenure, appRate, appPurpose);
     setShowApplyModal(false);
     setAppPurpose('');
   };
@@ -100,11 +104,12 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
   const handleRepaySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!repayTargetLoan || !repayAccountId) return;
+    setRepayError('');
     try {
       onRepayEMI(repayTargetLoan.id, repayAccountId);
       setRepayTargetLoan(null);
     } catch (err: any) {
-      alert(err.message || 'EMI Repayment failed.');
+      setRepayError(err.message || 'EMI Repayment failed.');
     }
   };
 
@@ -361,10 +366,7 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                                 Approve
                               </button>
                               <button
-                                onClick={() => {
-                                  const reason = prompt('Enter rejection reason:');
-                                  if (reason) onRejectLoan(loan.id, reason);
-                                }}
+                                onClick={() => onRejectLoan(loan.id, 'Declined after underwriting review')}
                                 className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-semibold text-[11px] transition"
                               >
                                 Reject
@@ -437,52 +439,55 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
             <form onSubmit={handleApplySubmit} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Applicant *</label>
-                <select
+                <TypeableSelect
                   required
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.fullName} ({c.customerId}) - Annual Income: {formatCurrency(c.annualIncome)}
-                    </option>
-                  ))}
-                </select>
+                  allowCustom={false}
+                  value={effectiveCustomerId}
+                  onChange={(val) => setSelectedCustomerId(val)}
+                  placeholder="Type or select applicant"
+                  options={customers.map((c) => ({
+                    value: c.id,
+                    label: `${c.fullName} (${c.customerId}) - Annual Income: ${formatCurrency(c.annualIncome)}`,
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Loan Category</label>
-                  <select
+                  <TypeableSelect
                     value={appLoanType}
-                    onChange={(e) => {
-                      const lt = e.target.value as LoanType;
+                    onChange={(val) => {
+                      const lt = val.toUpperCase() as LoanType;
                       setAppLoanType(lt);
                       if (lt === 'HOME') setAppRate(6.75);
                       else if (lt === 'VEHICLE') setAppRate(5.5);
                       else if (lt === 'EDUCATION') setAppRate(4.8);
                       else setAppRate(8.5);
                     }}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                  >
-                    <option value="PERSONAL">Personal Loan</option>
-                    <option value="HOME">Home Mortgage</option>
-                    <option value="VEHICLE">Auto / Vehicle</option>
-                    <option value="EDUCATION">Education Loan</option>
-                    <option value="BUSINESS">Small Business</option>
-                  </select>
+                    placeholder="Type or select loan category"
+                    options={[
+                      { value: 'PERSONAL', label: 'Personal Loan' },
+                      { value: 'HOME', label: 'Home Mortgage' },
+                      { value: 'VEHICLE', label: 'Auto / Vehicle' },
+                      { value: 'EDUCATION', label: 'Education Loan' },
+                      { value: 'BUSINESS', label: 'Small Business' },
+                    ]}
+                  />
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Amount Requested ($)</label>
                   <input
                     type="number"
-                    min="500"
-                    step="500"
+                    min="100"
+                    step="any"
                     required
-                    value={appAmount}
-                    onChange={(e) => setAppAmount(Number(e.target.value))}
+                    placeholder="Enter loan amount"
+                    value={appAmount === 0 ? '' : appAmount}
+                    onChange={(e) =>
+                      setAppAmount(e.target.value === '' ? 0 : Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -493,12 +498,15 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Tenure (Months)</label>
                   <input
                     type="number"
-                    min="6"
+                    min="1"
                     max="360"
-                    step="6"
+                    step="any"
                     required
-                    value={appTenure}
-                    onChange={(e) => setAppTenure(Number(e.target.value))}
+                    placeholder="Enter tenure months"
+                    value={appTenure === 0 ? '' : appTenure}
+                    onChange={(e) =>
+                      setAppTenure(e.target.value === '' ? 0 : Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -507,10 +515,14 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Interest Rate (%)</label>
                   <input
                     type="number"
-                    step="0.1"
+                    step="any"
+                    min="0"
                     required
-                    value={appRate}
-                    onChange={(e) => setAppRate(Number(e.target.value))}
+                    placeholder="Enter interest rate"
+                    value={appRate === 0 ? '' : appRate}
+                    onChange={(e) =>
+                      setAppRate(e.target.value === '' ? 0 : Number(e.target.value))
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs"
                   />
                 </div>
@@ -564,20 +576,21 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Target Account</label>
-                <select
+                <TypeableSelect
                   required
+                  allowCustom={false}
                   value={disburseAccountId}
-                  onChange={(e) => setDisburseAccountId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {accounts
-                    .filter((a) => a.customerId === disburseTargetLoan.customerId)
-                    .map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.accountNumber} ({acc.accountType}) [Bal: {formatCurrency(acc.balance)}]
-                      </option>
-                    ))}
-                </select>
+                  onChange={(val) => setDisburseAccountId(val)}
+                  placeholder="Type or select target account"
+                  options={(
+                    accounts.filter((a) => a.customerId === disburseTargetLoan.customerId).length > 0
+                      ? accounts.filter((a) => a.customerId === disburseTargetLoan.customerId)
+                      : accounts
+                  ).map((acc) => ({
+                    value: acc.id,
+                    label: `${acc.accountNumber} (${acc.accountType}) [Bal: ${formatCurrency(acc.balance)}]`,
+                  }))}
+                />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button
@@ -610,25 +623,31 @@ export const LoanManagement: React.FC<LoanManagementProps> = ({
               </button>
             </div>
             <form onSubmit={handleRepaySubmit} className="p-6 space-y-4">
+              {repayError && (
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-xs text-rose-700">
+                  {repayError}
+                </div>
+              )}
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-900">
                 Monthly EMI Installment: <strong>{formatCurrency(repayTargetLoan.monthlyEmi)}</strong>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Debit From Account</label>
-                <select
+                <TypeableSelect
                   required
+                  allowCustom={false}
                   value={repayAccountId}
-                  onChange={(e) => setRepayAccountId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs bg-white"
-                >
-                  {accounts
-                    .filter((a) => a.customerId === repayTargetLoan.customerId)
-                    .map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.accountNumber} ({acc.accountType}) [Bal: {formatCurrency(acc.balance)}]
-                      </option>
-                    ))}
-                </select>
+                  onChange={(val) => setRepayAccountId(val)}
+                  placeholder="Type or select source account"
+                  options={(
+                    accounts.filter((a) => a.customerId === repayTargetLoan.customerId).length > 0
+                      ? accounts.filter((a) => a.customerId === repayTargetLoan.customerId)
+                      : accounts
+                  ).map((acc) => ({
+                    value: acc.id,
+                    label: `${acc.accountNumber} (${acc.accountType}) [Bal: ${formatCurrency(acc.balance)}]`,
+                  }))}
+                />
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <button

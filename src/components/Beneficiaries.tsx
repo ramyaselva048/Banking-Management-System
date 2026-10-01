@@ -85,11 +85,7 @@ export const Beneficiaries: React.FC<BeneficiariesProps> = ({
                   {ben.beneficiaryName[0]}
                 </div>
                 <button
-                  onClick={() => {
-                    if (confirm(`Remove beneficiary ${ben.beneficiaryName}?`)) {
-                      onDeleteBeneficiary(ben.id);
-                    }
-                  }}
+                  onClick={() => onDeleteBeneficiary(ben.id)}
                   className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
                   title="Delete Beneficiary"
                 >
